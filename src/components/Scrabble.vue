@@ -1,5 +1,6 @@
 <template>
-  <div class="scrabble">
+  <div class="scrabble" @click="isShowMenu=false">
+    <div class="title">Scrabble</div>
     <div v-show="isShowCountDown" class="countdown">
       <div class="number number3">3</div>
       <div class="number number2">2</div>
@@ -9,23 +10,43 @@
       <span class="score">Total Score: {{score}}</span>
       <span class="round">Remaining Rounds: {{round}}</span>
     </div>
-    <input type="text" v-model="word" disabled>
-    <div class="card-wrap-container">
-      <transition name="drop">
-        <transition-group tag="ul" name="list" class="card-wrap" v-if="cards.length > 0">
-          <li v-for="(card,index) in cards" v-if="card.letter" :key="index" :class="{select: card.isSelected}" @click="toggleSelect(index)" @mouseenter="slideUp(index)" @mouseleave="slideDown(index)" :ref="'li'+index">{{card.letter}}</li>
-        </transition-group>
-      </transition>
+    <input type="text" v-model="word" disabled class="word-display">
+    <div class="game-title" v-show="!isPlaying">Scrabble Game</div>
+    <transition name="drop">
+      <transition-group tag="ul" name="list" class="card-wrap" v-if="cards.length > 0">
+        <li v-for="(card,index) in cards" v-if="card.letter" :key="index" :class="{select: card.isSelected}" @click.stop="toggleSelect(index)" @mouseenter="slideUp(index)" @mouseleave="slideDown(index)" :ref="'li'+index">{{card.letter}}</li>
+      </transition-group>
+    </transition>
+  
+    <div class="btn-group">
+      <button @click.stop="play" type="button" v-show="!isPlaying">Play</button>
+      <!--<button @click.stop="end" type="button">end</button>-->
+      <button @click.stop="nextRound" type="button" v-show="isPlaying&&!isAuto">NextRound</button>
+      <button @click.stop="submit" type="button" :disabled="selectedIndex.length < 2" v-show="isPlaying&&!isAuto">Submit</button>
+      <!--<button @click.stop="pop" type="button">pop</button>-->
+      <!--<button @click.stop="hint" type="button">hint</button>-->
+      <!--<button @click.stop="hint(true)" type="button">bestHint</button>-->
+      <button @click.stop="autoPlay" type="button" v-show="!isAuto">AutoPlay</button>
+      <button @click.stop="cancleAutoPlay" type="button" v-show="isAuto">Cancle AutoPlay</button>
     </div>
-    <button @click="play" type="button">play</button>
-    <button @click="end" type="button">end</button>
-    <button @click="nextRound" type="button">nextRound</button>
-    <button @click="pop" type="button">pop</button>
-    <button @click="push" type="button">push</button>
-    <button @click="hint" type="button">hint</button>
-    <button @click="hint(true)" type="button">bestHint</button>
-    <button @click="autoPlay" type="button">autoPlay</button>
-    <button @click="submit" type="button" :disabled="selectedIndex.length < 2">submit</button>
+    <div class="menu-icon" @click.stop="toggleMenu" :class="{active: isShowMenu}"></div>
+    <div class="menu" :class="{active: isShowMenu}">
+      <div class="btn-wrap">
+        <button @click.stop="hint" type="button">ReStart</button>
+      </div>
+      <div class="btn-wrap">
+        <button @click.stop="hint" type="button">Hint</button>
+      </div>
+      <div class="btn-wrap">
+        <button @click.stop="hint" type="button">Help</button>
+      </div>
+      <div class="btn-wrap">
+        <button @click.stop="hint" type="button">About</button>
+      </div>
+      <div class="btn-wrap">
+        <button @click.stop="hint" type="button">Quit</button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -41,7 +62,10 @@ export default {
       selectedIndex: [],
       score: 0,
       isShowCountDown: false,
-      round: 10
+      round: 10,
+      isAuto: false,
+      isPlaying: false,
+      isShowMenu: false
     }
   },
   computed: {
@@ -80,7 +104,11 @@ export default {
     }
   },
   methods: {
+    toggleMenu () {
+      this.isShowMenu = !this.isShowMenu
+    },
     async autoPlay () {
+      this.isAuto = true
       if (this.round === 0) {
         const isRestart = confirm('you have no round,do you want to restart game?')
         if (isRestart) {
@@ -92,8 +120,15 @@ export default {
       if (this.round === 10) {
         await this.play()
       }
+      if (!this.isAuto) {
+        return
+      }
+      this.isPlaying = true
       while (this.round >= 0) {
         while (this.hand.length >= 2) {
+          if (!this.isAuto) {
+            return
+          }
           const response = await this.$http.get('/api/hint', {
             params: {
               hand: this.hand.join(''),
@@ -101,6 +136,9 @@ export default {
             }
           })
           const result = response.data
+          if (!this.isAuto) {
+            return
+          }
           if (result.success) {
             await (() => {
               return new Promise((resolve, reject) => {
@@ -110,6 +148,9 @@ export default {
                 }, 1000)
               })
             })()
+            if (!this.isAuto) {
+              return
+            }
             await (() => {
               return new Promise((resolve, reject) => {
                 setTimeout(() => {
@@ -132,18 +173,29 @@ export default {
         if (this.round === 0) {
           this.hand = []
           alert('your total score is ' + this.score + ' points')
+          this.selectedIndex = []
+          this.score = 0
+          this.round = 10
+          await sleep(500)
+          this.isPlaying = false
+          this.isAuto = false
           break
         } else {
           await this.nextRound()
         }
       }
     },
+    cancleAutoPlay () {
+      this.isAuto = false
+    },
     async play () {
-      this.hand = []
-      this.selectedIndex = []
-      this.score = 0
-      this.round = 10
+      // this.hand = []
+      // this.selectedIndex = []
+      // this.score = 0
+      // this.round = 10
+
       await this.countDown()
+      this.isPlaying = true
       this.hand = dealHand(HAND_SIZE)
       this.round -= 1
     },
@@ -161,9 +213,6 @@ export default {
     },
     pop () {
       this.hand.pop()
-    },
-    push () {
-      this.selectedIndex.push(3)
     },
     async hint (isBest) {
       const response = await this.$http.get('/api/hint', {
@@ -191,6 +240,11 @@ export default {
           this.selectedIndex = []
         } else {
           alert('you have no round, your total score is ' + this.score + ' points')
+          this.hand = []
+          this.selectedIndex = []
+          this.score = 0
+          this.round = 10
+          this.isPlaying = false
         }
       })
     },
@@ -247,6 +301,60 @@ export default {
 </script>
 
 <style rel="stylesheet/scss" lang="scss">
+.scrabble {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  .title {
+    padding: 20px 0;
+    font-size: 40px;
+    line-height: 1;
+    color: #42b983;
+    cursor: default;
+  }
+  .menu {
+    box-sizing: border-box;
+    border-left: 2px solid #42b983;
+    border-top: 2px solid #42b983;
+    padding: 150px 0;
+    position: absolute;
+    z-index: 100;
+    top: 0;
+    right: -260px;
+    width: 260px;
+    height: 100%;
+    background-color: #eee;
+    transition: transform .3s;
+    transform: translate3d(0, 0, 0);
+    &.active {
+      transform: translate3d(-100%, 0, 0);
+    }
+    .btn-wrap {
+      margin-bottom: 50px;
+    }
+  }
+  .menu-icon {
+    position: absolute;
+    z-index: 101;
+    top: 40px;
+    right: 30px;
+    width: 30px;
+    height: 25px;
+    box-sizing: border-box;
+    border-top: 5px solid #42b983;
+    border-bottom: 5px solid #42b983;
+    background-color: #42b983;
+    padding: 5px 0;
+    background-clip: content-box;
+    cursor: pointer;
+    transition: transform .1s;
+    transform: translate3d(0, 0, 0);
+    &.active {
+      transform: translate3d(-160px, 0, 0);
+    }
+  }
+}
+
 .drop-enter-active,
 .drop-leave-active {
   transition: all .5s;
@@ -266,18 +374,33 @@ export default {
 .list-enter,
 .list-leave-active {
   opacity: 0;
-  transform: translateY(30px);
+  transform: translate3d(0, -100%, 0);
 }
 
 .list-leave-active {
   position: absolute;
 }
 
-.card-wrap-container {
-  padding: 100px 0;
-  height: 200px;
-  width: 100%;
-  overflow-x: hidden;
+// .card-wrap-container {
+//   padding: 100px 0;
+//   height: 200px;
+//   width: 100%;
+//   overflow-x: hidden;
+// }
+.game-title {
+  box-sizing: border-box;
+  width: 60%;
+  height: 300px;
+  border: 2px dashed #f35626;
+  margin: 20px auto;
+  font-size: 100px;
+  line-height: 300px;
+  color: #f35626;
+  background-image: -webkit-linear-gradient(92deg, #f35626, #feab3a);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: hue 60s infinite linear;
 }
 
 .card-wrap {
@@ -288,21 +411,23 @@ export default {
     width: 50px;
     margin-right: 10px;
     padding: 50px 40px;
-    border: 2px solid #ccc;
+    border: 2px solid #bbb;
     border-radius: 10px;
     font-size: 60px;
     cursor: pointer;
-    transition: all .4s;
+    transition: transform .4s;
     transform: translate3d(0, 0, 0);
     &.select {
       transform: translate3d(0, -20%, 0);
-      border-color: #42b983
+      border-color: #42b983;
+      box-shadow: 0 0 5px 1px #42b983;
     }
   }
 }
 
 .countdown {
   position: fixed;
+  z-index: 200;
   left: 0;
   top: 0;
   right: 0;
@@ -349,5 +474,80 @@ export default {
     opacity: 0;
     transform: scale3d(0, 0, 0);
   }
+}
+
+@keyframes hue {
+  0% {
+    -webkit-filter: hue-rotate(0deg);
+  }
+  100% {
+    -webkit-filter: hue-rotate(-360deg);
+  }
+}
+
+.btn-group {
+  margin-top: 50px;
+}
+
+.btn-group,
+.menu {
+  button {
+    padding: 10px 20px;
+    margin-right: 20px;
+    font-size: 20px;
+    font-weight: bold;
+    border-radius: 8px;
+    border: 2px solid #42b983;
+    color: #42b983;
+    transition: transform .15s;
+    background-color: #eee;
+    &:hover {
+      transform: scale3d(1.1, 1.1, 1.1);
+      color: darken(#42b983, 5%);
+      border-color: darken(#42b983, 5%);
+    }
+    &:active {
+      transform: scale3d(.9, .9, .9)
+    }
+    &:disabled {
+      color: #ccc;
+      border-color: #ccc;
+      cursor: not-allowed;
+    }
+  }
+}
+
+.menu {
+  button {
+    box-sizing: border-box;
+    width: 160px;
+    margin-right: 0;
+    background-color: #42b983;
+    color: #eee;
+    border-color: darken(#42b983, 5%);
+    &:hover {
+      color: #fff;
+      border-color: darken(#42b983, 10%);
+    }
+  }
+}
+
+.info {
+  cursor: default;
+  span {
+    margin-right: 40px;
+    font-size: 16px;
+    font-weight: bold;
+  }
+}
+
+.word-display {
+  margin: 30px 0 50px;
+  text-align: center;
+  border: none;
+  font-size: 80px;
+  font-weight: bold;
+  color: #42b983;
+  background-color: #f1f1f1;
 }
 </style>
