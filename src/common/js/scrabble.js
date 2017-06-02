@@ -69,3 +69,15 @@ export function dealHand (n) {
   }
   return hand
 }
+
+export function wordToIndex (word, hand) {
+  const arr = []
+  for (let i in word) {
+    let index = hand.indexOf(word[i])
+    while (arr.indexOf(index) !== -1) {
+      index = hand.indexOf(word[i], index + 1)
+    }
+    arr.push(index)
+  }
+  return arr
+}

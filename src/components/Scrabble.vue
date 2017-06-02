@@ -21,15 +21,18 @@
     <button @click="end" type="button">end</button>
     <button @click="nextRound" type="button">nextRound</button>
     <button @click="pop" type="button">pop</button>
+    <button @click="push" type="button">push</button>
     <button @click="hint" type="button">hint</button>
     <button @click="hint(true)" type="button">bestHint</button>
+    <button @click="autoPlay" type="button">autoPlay</button>
     <button @click="submit" type="button" :disabled="selectedIndex.length < 2">submit</button>
   </div>
 </template>
 
 <script>
 const HAND_SIZE = 7
-import { dealHand } from '../common/js/scrabble.js'
+import { getWordScore, dealHand, wordToIndex } from '../common/js/scrabble.js'
+import { sleep } from '../common/js/util.js'
 export default {
   data () {
     return {
@@ -68,9 +71,73 @@ export default {
           nodeLi.style.transform = 'translate3d(0,0,0)'
         })
       }
+      if (val.length > 0) {
+        val.forEach(item => {
+          this.cards[item].isSelected = true
+          this.$refs['li' + item][0].style.transform = 'translate3d(0,-20%,0)'
+        })
+      }
     }
   },
   methods: {
+    async autoPlay () {
+      if (this.round === 0) {
+        const isRestart = confirm('you have no round,do you want to restart game?')
+        if (isRestart) {
+          await this.play()
+        } else {
+          return
+        }
+      }
+      if (this.round === 10) {
+        await this.play()
+      }
+      while (this.round >= 0) {
+        while (this.hand.length >= 2) {
+          const response = await this.$http.get('/api/hint', {
+            params: {
+              hand: this.hand.join(''),
+              best: true
+            }
+          })
+          const result = response.data
+          if (result.success) {
+            await (() => {
+              return new Promise((resolve, reject) => {
+                setTimeout(() => {
+                  this.selectedIndex = wordToIndex(result.word, this.hand)
+                  resolve()
+                }, 1000)
+              })
+            })()
+            await (() => {
+              return new Promise((resolve, reject) => {
+                setTimeout(() => {
+                  const selectedIndexCopy = this.selectedIndex.slice(0)
+                  selectedIndexCopy.sort((a, b) => { return b - a })
+                  selectedIndexCopy.forEach(item => {
+                    this.hand.splice(item, 1)
+                  })
+                  this.selectedIndex = []
+                  this.score += getWordScore(result.word, HAND_SIZE)
+                  resolve()
+                }, 1000)
+              })
+            })()
+          } else {
+            break
+          }
+        }
+        await sleep()
+        if (this.round === 0) {
+          this.hand = []
+          alert('your total score is ' + this.score + ' points')
+          break
+        } else {
+          await this.nextRound()
+        }
+      }
+    },
     async play () {
       this.hand = []
       this.selectedIndex = []
@@ -78,6 +145,7 @@ export default {
       this.round = 10
       await this.countDown()
       this.hand = dealHand(HAND_SIZE)
+      this.round -= 1
     },
     countDown () {
       return new Promise((resolve, reject) => {
@@ -94,6 +162,9 @@ export default {
     pop () {
       this.hand.pop()
     },
+    push () {
+      this.selectedIndex.push(3)
+    },
     async hint (isBest) {
       const response = await this.$http.get('/api/hint', {
         params: {
@@ -109,16 +180,19 @@ export default {
       }
     },
     nextRound () {
-      if (this.round > 0) {
-        this.hand = []
-        setTimeout(() => {
-          this.hand = dealHand(HAND_SIZE)
-        }, 50)
-        this.round -= 1
-        this.selectedIndex = []
-      } else {
-        alert('you have no round, your total score is ' + this.score + ' points')
-      }
+      return new Promise((resolve, reject) => {
+        if (this.round > 0) {
+          this.hand = []
+          setTimeout(() => {
+            this.hand = dealHand(HAND_SIZE)
+            resolve()
+          }, 50)
+          this.round -= 1
+          this.selectedIndex = []
+        } else {
+          alert('you have no round, your total score is ' + this.score + ' points')
+        }
+      })
     },
     async submit () {
       const response = await this.$http.get('/api/score', {
