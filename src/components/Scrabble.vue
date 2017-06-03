@@ -11,8 +11,8 @@
       <span class="round">Remaining Rounds: {{round}}</span>
     </div>
     <input type="text" v-model="word" disabled class="word-display">
-    <div class="game-title" v-show="!isPlaying">Scrabble Game</div>
-    <transition name="drop">
+    <div class="game-title" v-if="!isPlaying">Scrabble Game</div>
+    <transition name="slide">
       <transition-group tag="ul" name="list" class="card-wrap" v-if="cards.length > 0">
         <li v-for="(card,index) in cards" v-if="card.letter" :key="index" :class="{select: card.isSelected}" @click.stop="toggleSelect(index)" @mouseenter="slideUp(index)" @mouseleave="slideDown(index)" :ref="'li'+index">{{card.letter}}</li>
       </transition-group>
@@ -355,18 +355,18 @@ export default {
   }
 }
 
-.drop-enter-active,
-.drop-leave-active {
+.slide-enter-active,
+.slide-leave-active {
   transition: all .5s;
 }
 
-.drop-enter,
+.slide-enter,
 {
   opacity: 0;
   transform: translate3d(-100%, 0, 0);
 }
 
-.drop-leave-active {
+.slide-leave-active {
   opacity: 0;
   transform: translate3d(100%, 0, 0);
 }
@@ -381,13 +381,11 @@ export default {
   position: absolute;
 }
 
-// .card-wrap-container {
-//   padding: 100px 0;
-//   height: 200px;
-//   width: 100%;
-//   overflow-x: hidden;
-// }
 .game-title {
+  position: absolute;
+  left: 50%;
+  bottom: 120px;
+  transform: translateX(-50%);
   box-sizing: border-box;
   width: 60%;
   height: 300px;
@@ -486,7 +484,10 @@ export default {
 }
 
 .btn-group {
-  margin-top: 50px;
+  position: absolute;
+  width: 100%;
+  left: 0;
+  bottom: 60px;
 }
 
 .btn-group,
