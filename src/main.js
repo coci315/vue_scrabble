@@ -4,8 +4,10 @@ import Vue from 'vue'
 import App from './App'
 import router from './router'
 import axios from 'axios'
+import toast from './components/toast/toast.js'
 
 Vue.prototype.$http = axios
+Vue.prototype.$toast = toast
 
 Vue.config.productionTip = false
 

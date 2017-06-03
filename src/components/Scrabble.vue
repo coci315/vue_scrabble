@@ -32,19 +32,19 @@
     <div class="menu-icon" @click.stop="toggleMenu" :class="{active: isShowMenu}"></div>
     <div class="menu" :class="{active: isShowMenu}">
       <div class="btn-wrap">
-        <button @click.stop="hint" type="button">ReStart</button>
+        <button @click.stop="restart" type="button">ReStart</button>
       </div>
       <div class="btn-wrap">
         <button @click.stop="hint" type="button">Hint</button>
       </div>
       <div class="btn-wrap">
-        <button @click.stop="hint" type="button">Help</button>
+        <button @click.stop="showHelp" type="button">Help</button>
       </div>
       <div class="btn-wrap">
-        <button @click.stop="hint" type="button">About</button>
+        <button @click.stop="showAbout" type="button">About</button>
       </div>
       <div class="btn-wrap">
-        <button @click.stop="hint" type="button">Quit</button>
+        <button @click.stop="quit" type="button">Quit</button>
       </div>
     </div>
   </div>
@@ -104,6 +104,9 @@ export default {
     }
   },
   methods: {
+    showHelp () {
+      this.$toast('123')
+    },
     toggleMenu () {
       this.isShowMenu = !this.isShowMenu
     },
@@ -160,7 +163,9 @@ export default {
                     this.hand.splice(item, 1)
                   })
                   this.selectedIndex = []
-                  this.score += getWordScore(result.word, HAND_SIZE)
+                  const score = getWordScore(result.word, HAND_SIZE)
+                  this.score += score
+                  this.$toast('you got ' + score + ' points')
                   resolve()
                 }, 1000)
               })
@@ -210,9 +215,23 @@ export default {
     },
     end () {
       this.hand = []
+      this.selectedIndex = []
+      this.score = 0
+      this.round = 10
+      this.isPlaying = false
     },
-    pop () {
-      this.hand.pop()
+    quit () {
+      const isTrue = confirm('Confirm to quit?')
+      if (isTrue) {
+        this.end()
+      }
+    },
+    restart () {
+      const isTrue = confirm('Confirm to restart?')
+      if (isTrue) {
+        this.end()
+        this.play()
+      }
     },
     async hint (isBest) {
       const response = await this.$http.get('/api/hint', {
@@ -256,7 +275,7 @@ export default {
       })
       const result = response.data
       if (result.success) {
-        alert('you got ' + result.score + ' points')
+        this.$toast('you got ' + result.score + ' points')
         const selectedIndexCopy = this.selectedIndex.slice(0)
         selectedIndexCopy.sort((a, b) => { return b - a })
         selectedIndexCopy.forEach(item => {
@@ -384,7 +403,7 @@ export default {
 .game-title {
   position: absolute;
   left: 50%;
-  bottom: 120px;
+  bottom: 180px;
   transform: translateX(-50%);
   box-sizing: border-box;
   width: 60%;
@@ -439,7 +458,7 @@ export default {
     width: 120px;
     height: 230px;
     margin-left: -60px;
-    margin-top: -115px;
+    margin-top: -165px;
     font-size: 200px;
     opacity: 0;
     animation: zoomOut 1s ease 0s 1 both;
@@ -543,10 +562,10 @@ export default {
 }
 
 .word-display {
-  margin: 30px 0 50px;
+  margin: 50px 0 50px;
   text-align: center;
   border: none;
-  font-size: 80px;
+  font-size: 70px;
   font-weight: bold;
   color: #42b983;
   background-color: #f1f1f1;
