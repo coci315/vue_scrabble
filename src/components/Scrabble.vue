@@ -27,7 +27,7 @@
       <!--<button @click.stop="hint" type="button">hint</button>-->
       <!--<button @click.stop="hint(true)" type="button">bestHint</button>-->
       <button @click.stop="autoPlay" type="button" v-show="!isAuto">AutoPlay</button>
-      <button @click.stop="cancleAutoPlay" type="button" v-show="isAuto">Cancle AutoPlay</button>
+      <button @click.stop="cancelAutoPlay" type="button" v-show="isAuto">Cancel AutoPlay</button>
     </div>
     <div class="menu-icon" @click.stop="toggleMenu" :class="{active: isShowMenu}"></div>
     <div class="menu" :class="{active: isShowMenu}">
@@ -105,21 +105,57 @@ export default {
   },
   methods: {
     showHelp () {
-      this.$toast('123')
+      const h = this.$createElement
+      this.$msgbox({
+        title: '帮助',
+        message: h('div', null, [
+          h('p', null, '1. 每局有10个回合'),
+          h('p', null, '2. 从给定的字母中组成有效的单词提交'),
+          h('p', null, '3. 计分规则为单词中每个字母的分数相加后，乘以单词的长度'),
+          h('p', null, '4. 如提交的单词用上了所有给出的字母，则额外获得50分'),
+          h('p', null, '5. 不同的字母根据出现的频率不同得分不一'),
+          h('p', null, '6. "aeinlorstu"计1分,"dg"计2分，"bcmp"计3分,"fhvwy"计4分，"k"计5分，"jx"计8分，"qz"计10分')
+        ]),
+        customClass: 'my-msgbox',
+        confirmButtonText: 'OK',
+        confirmButtonClass: 'my-btn'
+      })
+    },
+    showAbout () {
+      const h = this.$createElement
+      this.$msgbox({
+        title: 'About',
+        message: h('div', { style: 'text-align: center' }, [
+          h('p', null, 'A scrabble game made by Link.W')
+        ]),
+        customClass: 'my-msgbox',
+        confirmButtonText: 'OK',
+        confirmButtonClass: 'my-btn'
+      })
     },
     toggleMenu () {
       this.isShowMenu = !this.isShowMenu
     },
     async autoPlay () {
+      const h = this.$createElement
       this.isAuto = true
-      if (this.round === 0) {
-        const isRestart = confirm('you have no round,do you want to restart game?')
-        if (isRestart) {
-          await this.play()
-        } else {
-          return
-        }
-      }
+      // if (this.round === 0) {
+      //   // const isRestart = confirm('you have no round,do you want to restart game?')
+      //   // if (isRestart) {
+      //   //   await this.play()
+      //   // } else {
+      //   //   return
+      //   // }
+      //   this.$confirm('you have no round,do you want to restart game?', 'tips', {
+      //     confirmButtonText: 'OK',
+      //     cancelButtonText: 'cancel',
+      //     type: 'warning'
+      //   }).then(async () => {
+      //     await this.play()
+      //   }).catch(() => {
+      //     return
+      //   })
+      // }
       if (this.round === 10) {
         await this.play()
       }
@@ -177,7 +213,20 @@ export default {
         await sleep()
         if (this.round === 0) {
           this.hand = []
-          alert('your total score is ' + this.score + ' points')
+          // alert('your total score is ' + this.score + ' points')
+          this.$msgbox({
+            title: 'Notification',
+            message: h('div', { style: 'text-align: center' }, [
+              h('p', null, [
+                h('span', null, 'Your total score is '),
+                h('span', { style: 'font-weight: bold' }, this.score),
+                h('span', null, ' points')
+              ])
+            ]),
+            customClass: 'my-msgbox',
+            confirmButtonText: 'OK',
+            confirmButtonClass: 'my-btn'
+          })
           this.selectedIndex = []
           this.score = 0
           this.round = 10
@@ -190,7 +239,7 @@ export default {
         }
       }
     },
-    cancleAutoPlay () {
+    cancelAutoPlay () {
       this.isAuto = false
     },
     async play () {
@@ -221,19 +270,64 @@ export default {
       this.isPlaying = false
     },
     quit () {
-      const isTrue = confirm('Confirm to quit?')
-      if (isTrue) {
-        this.end()
-      }
+      // const isTrue = confirm('Confirm to quit?')
+      // if (isTrue) {
+      //   this.end()
+      // }
+      this.$confirm('Confirm to Quit?', 'Notification', {
+        confirmButtonText: 'OK',
+        cancelButtonText: 'cancel',
+        type: 'warning',
+        customClass: 'my-msgbox',
+        confirmButtonClass: 'my-btn',
+        cancelButtonClass: 'my-cancel-btn'
+      }).then(() => {
+        if (this.isAuto) {
+          this.isAuto = false
+        }
+        setTimeout(() => {
+          this.end()
+        }, 1000)
+      })
     },
     restart () {
-      const isTrue = confirm('Confirm to restart?')
-      if (isTrue) {
-        this.end()
-        this.play()
-      }
+      // const isTrue = confirm('Confirm to restart?')
+      // if (isTrue) {
+      //   this.end()
+      //   this.play()
+      // }
+      this.$confirm('Confirm to ReStart?', 'Notification', {
+        confirmButtonText: 'OK',
+        cancelButtonText: 'cancel',
+        type: 'warning',
+        customClass: 'my-msgbox',
+        confirmButtonClass: 'my-btn',
+        cancelButtonClass: 'my-cancel-btn'
+      }).then(() => {
+        if (this.isAuto) {
+          this.isAuto = false
+        }
+        setTimeout(() => {
+          this.end()
+          this.play()
+        }, 1000)
+      })
     },
     async hint (isBest) {
+      const h = this.$createElement
+      if (!this.isPlaying) {
+        this.$msgbox({
+          title: 'Notification',
+          message: h('div', null, [
+            h('p', null, 'You should start the game first.')
+          ]),
+          type: 'warning',
+          customClass: 'my-msgbox',
+          confirmButtonText: 'OK',
+          confirmButtonClass: 'my-btn'
+        })
+        return
+      }
       const response = await this.$http.get('/api/hint', {
         params: {
           hand: this.hand.join(''),
@@ -242,13 +336,37 @@ export default {
       })
       const result = response.data
       if (result.success) {
-        alert('you can try "' + result.word + '"')
+        // alert('you can try "' + result.word + '"')
+        this.$msgbox({
+          title: 'Notification',
+          message: h('div', { style: 'text-align: center' }, [
+            h('p', null, [
+              h('span', null, 'You can try "'),
+              h('span', { style: 'font-weight: bold' }, result.word),
+              h('span', null, '"')
+            ])
+          ]),
+          customClass: 'my-msgbox',
+          confirmButtonText: 'OK',
+          confirmButtonClass: 'my-btn'
+        })
       } else {
-        alert(result.message)
+        // alert(result.message)
+        this.$msgbox({
+          title: 'Notification',
+          message: h('div', null, [
+            h('p', null, result.message)
+          ]),
+          type: 'warning',
+          customClass: 'my-msgbox',
+          confirmButtonText: 'OK',
+          confirmButtonClass: 'my-btn'
+        })
       }
     },
     nextRound () {
       return new Promise((resolve, reject) => {
+        const h = this.$createElement
         if (this.round > 0) {
           this.hand = []
           setTimeout(() => {
@@ -258,7 +376,20 @@ export default {
           this.round -= 1
           this.selectedIndex = []
         } else {
-          alert('you have no round, your total score is ' + this.score + ' points')
+          // alert('you have no round, your total score is ' + this.score + ' points')
+          this.$msgbox({
+            title: 'Notification',
+            message: h('div', { style: 'text-align: center' }, [
+              h('p', null, [
+                h('span', null, 'You have no round, your total score is '),
+                h('span', { style: 'font-weight: bold' }, this.score),
+                h('span', null, ' points')
+              ])
+            ]),
+            customClass: 'my-msgbox',
+            confirmButtonText: 'OK',
+            confirmButtonClass: 'my-btn'
+          })
           this.hand = []
           this.selectedIndex = []
           this.score = 0
@@ -284,7 +415,18 @@ export default {
         this.selectedIndex = []
         this.score += result.score
       } else {
-        alert(result.message)
+        // alert(result.message)
+        const h = this.$createElement
+        this.$msgbox({
+          title: 'Notification',
+          message: h('div', null, [
+            h('p', null, result.message)
+          ]),
+          type: 'warning',
+          customClass: 'my-msgbox',
+          confirmButtonText: 'OK',
+          confirmButtonClass: 'my-btn'
+        })
         this.cancelAllSelect()
       }
     },
@@ -453,6 +595,7 @@ export default {
   z-index: 10;
   .number {
     position: absolute;
+    z-index: 201;
     left: 50%;
     top: 50%;
     width: 120px;
@@ -569,5 +712,24 @@ export default {
   font-weight: bold;
   color: #42b983;
   background-color: #f1f1f1;
+}
+
+.my-msgbox {
+  .el-message-box__headerbtn:hover .el-message-box__close {
+    color: #999;
+  }
+}
+
+.my-btn.el-button--primary {
+  background-color: #42b983;
+  border-color: #42b983;
+  &:hover {
+    background-color: darken(#42b983, 5%);
+  }
+}
+
+.my-cancel-btn:hover {
+  border-color: #42b983;
+  color: #42b983;
 }
 </style>
