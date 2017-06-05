@@ -39,6 +39,9 @@
         <button @click.stop="hint" type="button">Hint</button>
       </div>
       <div class="btn-wrap">
+        <button @click.stop="showHighScores" type="button">HighScores</button>
+      </div>
+      <div class="btn-wrap">
         <button @click.stop="showHelp" type="button">Help</button>
       </div>
       <div class="btn-wrap">
@@ -54,7 +57,7 @@
 <script>
 const HAND_SIZE = 7
 import { getWordScore, dealHand, wordToIndex } from '../common/js/scrabble.js'
-import { sleep } from '../common/js/util.js'
+import { sleep, paddingZero } from '../common/js/util.js'
 import { saveToLocal, loadFromLocal } from '../common/js/store.js'
 export default {
   data () {
@@ -137,6 +140,45 @@ export default {
         confirmButtonClass: 'my-btn'
       })
     },
+    async showHighScores () {
+      const h = this.$createElement
+      const response = await this.$http.get('/api/highscores')
+      const result = response.data
+      if (result.success) {
+        console.log(result.data)
+        const dataArr = result.data
+        const maxLen = Math.min(Math.max(dataArr.length, 10), 10)
+        const nodeLis = []
+        for (let i = 0; i < maxLen; i++) {
+          if (dataArr[i] === undefined) {
+            nodeLis.push(h('li', null, [
+              h('span', { class: 'number' }, paddingZero(i + 1) + '. '),
+              h('span', null, '------ '),
+              h('span', { class: 'name' }, '----' + ' '),
+              h('span', null, '------ '),
+              h('span', { class: 'score' }, '----')
+            ]))
+          } else {
+            nodeLis.push(h('li', null, [
+              h('span', { class: 'number' }, paddingZero(i + 1) + '. '),
+              h('span', null, '------ '),
+              h('span', { class: 'name' }, dataArr[i].name + ' '),
+              h('span', null, '------ '),
+              h('span', { class: 'score' }, dataArr[i].bestScore)
+            ]))
+          }
+        }
+        this.$msgbox({
+          title: 'HighScores',
+          message: h('ul', {
+            style: 'color: #999;',
+            class: 'my-msgbox-ul'
+          }, nodeLis),
+          customClass: 'my-msgbox',
+          showConfirmButton: false
+        })
+      }
+    },
     toggleMenu () {
       this.isShowMenu = !this.isShowMenu
     },
@@ -218,7 +260,7 @@ export default {
         if (this.round === 0) {
           this.hand = []
           // alert('your total score is ' + this.score + ' points')
-          const isBestScore = this.checkBestScore(this.score)
+          const isBestScore = await this.checkBestScore(this.score)
           if (!isBestScore) {
             this.$msgbox({
               title: 'Notification',
@@ -249,23 +291,37 @@ export default {
     cancelAutoPlay () {
       this.isAuto = false
     },
-    checkBestScore (score) {
+    async checkBestScore (score) {
       if (score > this.bestScore) {
         this.bestScore = score
         saveToLocal('bestScore', score)
-        const h = this.$createElement
-        this.$msgbox({
-          title: 'Notification',
-          message: h('div', { style: 'text-align: center' }, [
-            h('p', null, [
-              h('span', null, 'Congratulations!You\'ve got a new BestScore: '),
-              h('span', { style: 'font-weight: bold' }, this.bestScore)
-            ])
-          ]),
+        // const h = this.$createElement
+        const obj = await this.$prompt('Congratulations! You\'ve got a new BestScore: ' + this.bestScore + '. Please enter your name:', 'Notification', {
+          // title: 'Notification',
+          // message: h('div', null, [
+          //   h('p', null, [
+          //     h('span', null, 'Congratulations!You\'ve got a new BestScore: '),
+          //     h('span', { style: 'font-weight: bold' }, this.bestScore)
+          //   ]),
+          //   h('p', null, 'Please enter your name:')
+          // ]),
           customClass: 'my-msgbox',
-          confirmButtonText: 'OK',
-          confirmButtonClass: 'my-btn'
-        })
+          confirmButtonText: 'submit',
+          cancelButtonText: 'cancel',
+          confirmButtonClass: 'my-btn',
+          cancelButtonClass: 'my-cancel-btn',
+          inputPlaceholder: 'a name must contain 3-12 digit letters or numbers',
+          inputPattern: /^[a-zA-Z0-9]{3,12}$/,
+          inputErrorMessage: 'a name must contain 3-12 digit letters or numbers'
+        }).catch(err => console.log('error: ' + err))
+        if (obj) {
+          const response = await this.$http.post('/api/highscores', {
+            name: obj.value,
+            bestScore: this.bestScore
+          })
+          const result = response.data
+          this.$toast(result.message)
+        }
         return true
       } else {
         return false
@@ -399,7 +455,7 @@ export default {
       }
     },
     nextRound () {
-      return new Promise((resolve, reject) => {
+      return new Promise(async (resolve, reject) => {
         const h = this.$createElement
         if (this.round > 0) {
           this.hand = []
@@ -411,7 +467,7 @@ export default {
           this.selectedIndex = []
         } else {
           // alert('you have no round, your total score is ' + this.score + ' points')
-          const isBestScore = this.checkBestScore(this.score)
+          const isBestScore = await this.checkBestScore(this.score)
           if (!isBestScore) {
             this.$msgbox({
               title: 'Notification',
@@ -514,7 +570,7 @@ export default {
     box-sizing: border-box;
     border-left: 2px solid #42b983;
     border-top: 2px solid #42b983;
-    padding: 150px 0;
+    padding: 120px 0;
     position: absolute;
     z-index: 100;
     top: 0;
@@ -768,5 +824,33 @@ export default {
 .my-cancel-btn:hover {
   border-color: #42b983;
   color: #42b983;
+}
+
+.my-msgbox-ul {
+
+  width: 100%;
+  li {
+    display: table;
+    width: 100%;
+    height: 20px;
+  }
+  span {
+    display: table-cell;
+    text-align: center;
+    vertical-align: middle;
+  }
+  .name,
+  .score {
+    width: 100px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .number,
+  .name,
+  .score {
+    font-weight: bold;
+    color: #333;
+  }
 }
 </style>

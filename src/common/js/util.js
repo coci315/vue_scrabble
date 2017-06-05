@@ -5,3 +5,7 @@ export function sleep (time = 1000) {
     }, time)
   })
 }
+
+export function paddingZero (num) {
+  return num < 10 ? '0' + num : '' + num
+}
