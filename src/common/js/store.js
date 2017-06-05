@@ -16,5 +16,5 @@ export function loadFromLocal (key, def) {
   }
   scrabble = JSON.parse(scrabble)
   let ret = scrabble[key]
-  return ret || def
+  return ret === undefined ? def : ret
 }

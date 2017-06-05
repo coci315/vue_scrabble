@@ -64,6 +64,7 @@ export default {
       selectedIndex: [],
       score: 0,
       bestScore: loadFromLocal('bestScore', 0),
+      isFirstPlay: loadFromLocal('isFirst', true),
       isShowCountDown: false,
       round: 10,
       isAuto: false,
@@ -275,7 +276,12 @@ export default {
       // this.selectedIndex = []
       // this.score = 0
       // this.round = 10
-
+      if (this.isFirstPlay) {
+        this.showHelp()
+        this.isFirstPlay = false
+        saveToLocal('isFirst', false)
+        return
+      }
       await this.countDown()
       this.isPlaying = true
       this.hand = dealHand(HAND_SIZE)
