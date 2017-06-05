@@ -7,6 +7,7 @@
       <div class="number number1">1</div>
     </div>
     <div class="info">
+      <span class="score">Best Score: {{bestScore}}</span>
       <span class="score">Total Score: {{score}}</span>
       <span class="round">Remaining Rounds: {{round}}</span>
     </div>
@@ -54,6 +55,7 @@
 const HAND_SIZE = 7
 import { getWordScore, dealHand, wordToIndex } from '../common/js/scrabble.js'
 import { sleep } from '../common/js/util.js'
+import { saveToLocal, loadFromLocal } from '../common/js/store.js'
 export default {
   data () {
     return {
@@ -61,6 +63,7 @@ export default {
       cards: [],
       selectedIndex: [],
       score: 0,
+      bestScore: loadFromLocal('bestScore', 0),
       isShowCountDown: false,
       round: 10,
       isAuto: false,
@@ -214,19 +217,22 @@ export default {
         if (this.round === 0) {
           this.hand = []
           // alert('your total score is ' + this.score + ' points')
-          this.$msgbox({
-            title: 'Notification',
-            message: h('div', { style: 'text-align: center' }, [
-              h('p', null, [
-                h('span', null, 'Your total score is '),
-                h('span', { style: 'font-weight: bold' }, this.score),
-                h('span', null, ' points')
-              ])
-            ]),
-            customClass: 'my-msgbox',
-            confirmButtonText: 'OK',
-            confirmButtonClass: 'my-btn'
-          })
+          const isBestScore = this.checkBestScore(this.score)
+          if (!isBestScore) {
+            this.$msgbox({
+              title: 'Notification',
+              message: h('div', { style: 'text-align: center' }, [
+                h('p', null, [
+                  h('span', null, 'Your total score is '),
+                  h('span', { style: 'font-weight: bold' }, this.score),
+                  h('span', null, ' points')
+                ])
+              ]),
+              customClass: 'my-msgbox',
+              confirmButtonText: 'OK',
+              confirmButtonClass: 'my-btn'
+            })
+          }
           this.selectedIndex = []
           this.score = 0
           this.round = 10
@@ -241,6 +247,28 @@ export default {
     },
     cancelAutoPlay () {
       this.isAuto = false
+    },
+    checkBestScore (score) {
+      if (score > this.bestScore) {
+        this.bestScore = score
+        saveToLocal('bestScore', score)
+        const h = this.$createElement
+        this.$msgbox({
+          title: 'Notification',
+          message: h('div', { style: 'text-align: center' }, [
+            h('p', null, [
+              h('span', null, 'Congratulations!You\'ve got a new BestScore: '),
+              h('span', { style: 'font-weight: bold' }, this.bestScore)
+            ])
+          ]),
+          customClass: 'my-msgbox',
+          confirmButtonText: 'OK',
+          confirmButtonClass: 'my-btn'
+        })
+        return true
+      } else {
+        return false
+      }
     },
     async play () {
       // this.hand = []
@@ -377,19 +405,22 @@ export default {
           this.selectedIndex = []
         } else {
           // alert('you have no round, your total score is ' + this.score + ' points')
-          this.$msgbox({
-            title: 'Notification',
-            message: h('div', { style: 'text-align: center' }, [
-              h('p', null, [
-                h('span', null, 'You have no round, your total score is '),
-                h('span', { style: 'font-weight: bold' }, this.score),
-                h('span', null, ' points')
-              ])
-            ]),
-            customClass: 'my-msgbox',
-            confirmButtonText: 'OK',
-            confirmButtonClass: 'my-btn'
-          })
+          const isBestScore = this.checkBestScore(this.score)
+          if (!isBestScore) {
+            this.$msgbox({
+              title: 'Notification',
+              message: h('div', { style: 'text-align: center' }, [
+                h('p', null, [
+                  h('span', null, 'You have no round, your total score is '),
+                  h('span', { style: 'font-weight: bold' }, this.score),
+                  h('span', null, ' points')
+                ])
+              ]),
+              customClass: 'my-msgbox',
+              confirmButtonText: 'OK',
+              confirmButtonClass: 'my-btn'
+            })
+          }
           this.hand = []
           this.selectedIndex = []
           this.score = 0
