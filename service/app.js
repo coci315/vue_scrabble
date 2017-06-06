@@ -17,9 +17,10 @@ wordList = wordList.map(item => {
   return item.toLowerCase()
 })
 console.log(wordList.length + ' words loaded.')
-
-app.get('/', function (req, res) {
-  res.send('Hello World')
+app.use(express.static('./dist'))
+app.get('/', function (req, res, next) {
+  req.url = '/index.html'
+  next()
 })
 
 app.get('/api/highscores', function (req, res) {
@@ -150,7 +151,7 @@ app.get('/api/hint', function (req, res) {
   }
 })
 
-const server = app.listen(3000, function () {
+const server = app.listen(3001, function () {
   const host = server.address().address
   const port = server.address().port
 
